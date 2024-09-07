@@ -1,5 +1,6 @@
 {
 	"files.associations": {
-		"inet.h": "c"
+		"inet.h": "c",
+		"sendfile.h": "c"
 	}
 }

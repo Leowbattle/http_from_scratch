@@ -9,9 +9,11 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
 #include <unistd.h>
 #include <pthread.h>
+#include <sys/sendfile.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 typedef struct {
 	int fd;
@@ -21,6 +23,10 @@ typedef struct {
 
 const char* getMIMEType(const char* url) {
 	char* ext = strrchr(url, '.');
+
+	if (ext == NULL) {
+		return "application/octet-stream";
+	}
 
 	if (strcmp(ext, ".html") == 0) return "text/html; charset=utf-8"; // Hardcode utf8 ok?
 	else if (strcmp(ext, ".png") == 0) return "image/png";
@@ -35,31 +41,29 @@ void serveFile(int fd, const char* url) {
 
 	// TODO Check path doesn't have ../
 
-	FILE* f = fopen(url, "r");
-	if (f == NULL) {
-		// 404 error
-		perror("fopen");
+	int f = open(url, O_RDONLY);
+	if (f == -1) {
+		perror("open");
 		return;
 	}
 
-	fseek(f, 0, SEEK_END);
-	long size = ftell(f);
-	fseek(f, 0, SEEK_SET);
-
-	char* data = malloc(size);
-	fread(data, size, 1, f);
+	struct stat st;
+	fstat(f, &st);
 
 	char responseBuf[BUF_SIZE];
 	snprintf(responseBuf, BUF_SIZE,
 	"HTTP/1.1 200 OK\r\n"
 	"Content-Type: %s\r\n"
 	"Content-Length: %ld\r\n"
-	"\r\n", getMIMEType(url), size);
+	"\r\n", getMIMEType(url), st.st_size);
 
 	// Missing null terminator
 
 	write(fd, responseBuf, strlen(responseBuf));
-	write(fd, data, size);
+	
+	sendfile(fd, f, NULL, st.st_size);
+
+	close(f);
 }
 
 void* clientHandler(void* arg) {
