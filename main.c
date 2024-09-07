@@ -66,10 +66,7 @@ void serveFile(int fd, const char* url) {
 	close(f);
 }
 
-void* clientHandler(void* arg) {
-	int fd = ((ClientBeginData*)arg)->fd;
-	free(arg);
-
+void handleRequest(int fd) {
 	char buf[BUF_SIZE] = {0};
 
 	int n = read(fd, buf, BUFSIZ);
@@ -89,7 +86,7 @@ void* clientHandler(void* arg) {
 
 	if (memcmp(beg, "GET", strlen("GET") != 0)) {
 		printf("400 bad request\n"); // TODO
-		return NULL;
+		return;
 	}
 
 	// Extract the URL
@@ -111,6 +108,16 @@ void* clientHandler(void* arg) {
 	}
 	
 	free(url);
+}
+
+void* clientHandler(void* arg) {
+	int fd = ((ClientBeginData*)arg)->fd;
+	free(arg);
+
+	// Should close client fd eventually.
+	while (true) {
+		handleRequest(fd);
+	}
 
 	close(fd);
 }
