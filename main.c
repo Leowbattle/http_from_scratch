@@ -16,6 +16,8 @@
 
 #if defined(__APPLE__)
 #include <sys/uio.h> // For macOS compatibility with sendfile
+#else
+#include <sys/sendfile.h>
 #endif
 
 typedef struct
